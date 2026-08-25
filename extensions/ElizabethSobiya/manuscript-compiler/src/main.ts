@@ -429,12 +429,28 @@ export default class ManuscriptCompilerPlugin extends Plugin {
     const view = this.reportView();
     view?.setBusy(`${pass.title}… (this can take a few minutes on a long document)`);
 
-    const sessionId = `manuscript-${hash(result.meta.title)}`;
+    // A fresh session per pass. A stable id looks tidy and is wrong: the API
+    // answers 409 when a second turn arrives while the first is still settling,
+    // and server-side context from an unrelated pass leaks into the next one —
+    // a blurb request inheriting the preface conversation. The CLI round trip
+    // learned this against the live API; the plugin was still doing it the old way.
+    const sessionId = `manuscript-${hash(result.meta.title)}-${Date.now().toString(36)}`;
     try {
+      // Upload first, then chat. The document has to be the session's active
+      // document before a turn can edit it — passing the HTML inline on the chat
+      // call is not the same thing, and is why this path failed.
+      view?.setBusy(`${pass.title}: uploading the manuscript…`, () => this.cancelCompile());
+      await client.uploadDocument({
+        sessionId,
+        filename: `${slugFilename(result.meta.title)}.html`,
+        content: plan.documentHtml,
+        contentType: "text/html",
+      });
+
+      view?.setBusy(`${pass.title}: starting…`, () => this.cancelCompile());
       const { job_id } = await client.chatAsync({
         sessionId,
         message: plan.instruction,
-        documentHtml: plan.documentHtml,
         approvalMode: "ask_every_time",
       });
 

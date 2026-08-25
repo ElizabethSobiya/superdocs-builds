@@ -331,6 +331,10 @@ The docs do not describe the HTML the exporter honours. These were established e
 
 Verified in the exported `.docx`: `word/footnotes.xml` present, 6 `footnoteReference` elements, 20 `w:type="page"` breaks, 7 embedded images, 24 bookmarks and 36 hyperlinks. **All of it for zero operations** — the compiler produces the markup itself rather than asking a model to.
 
+A fourth convention, and the one that cost me most: **a chat turn edits the session's active document, and the only way to make a document active is to upload it first.** Passing the markup inline on the chat call is not equivalent — the turn runs against nothing. Sessions are also not reusable for a second turn while the first is still settling; the API answers 409, correctly.
+
+Both are stated here because neither is obvious from the endpoint signatures, and because getting them wrong fails in a way that looks like a client bug rather than a protocol one.
+
 ---
 
 ## The editorial passes — the only place this spends money
